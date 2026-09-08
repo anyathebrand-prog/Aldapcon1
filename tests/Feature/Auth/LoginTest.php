@@ -130,20 +130,27 @@ it('never records the password in a login attempt', function (): void {
 });
 
 it('locks out after six consecutive failures', function (): void {
-    // AC-F4 names six. The seventh must be refused by the limiter rather than
-    // reaching the credential check at all.
-    User::factory()->create(['email' => 'ada@example.com']);
+    // AC-F4 names six.
+    //
+    // The assertion is that the CORRECT password is refused during the
+    // cooldown. That is what a lockout means, and it is what an attacker
+    // running a dictionary actually runs into.
+    //
+    // Asserting on the wording instead would couple this test to Fortify's
+    // message catalogue: a translation change would break it, and a lockout
+    // that silently stopped working would not.
+    $user = User::factory()->create(['email' => 'ada@example.com']);
+    $user->assignRole('member');
 
     for ($i = 0; $i < 6; $i++) {
         post('/login', ['email' => 'ada@example.com', 'password' => 'wrong'])
             ->assertSessionHasErrors('email');
     }
 
-    post('/login', ['email' => 'ada@example.com', 'password' => 'wrong']);
+    post('/login', ['email' => 'ada@example.com', 'password' => 'password'])
+        ->assertSessionHasErrors('email');
 
-    // The lockout message states a cooldown (App Flow A-08), which the
-    // generic failure message does not.
-    expect(errorFor('email'))->toContain('seconds');
+    assertGuest();
 });
 
 it('lets a correct password through before the sixth failure', function (): void {
