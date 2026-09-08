@@ -1,3 +1,209 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ===========================================================================
+   Fonts — TRD §7.1, UI brief §3.1
+   Self-hosted. Nothing is fetched from a third-party font CDN at runtime.
+   Two variable files cover every weight and the width axis; see
+   public/fonts/README.md for the budget arithmetic.
+   =========================================================================== */
+
+@font-face {
+    font-family: 'Archivo';
+    src: url('/fonts/archivo-latin-var.woff2') format('woff2-variations');
+    font-weight: 400 700;
+    font-stretch: 62.5% 125%;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'Literata';
+    src: url('/fonts/literata-latin-var.woff2') format('woff2-variations');
+    font-weight: 400 600;
+    font-style: normal;
+    font-display: swap;
+}
+
+/* ===========================================================================
+   Base — UI brief §2.3, §3, §10
+   =========================================================================== */
+
+@layer base {
+    :root {
+        /* Mirrors of the Tailwind tokens, for the few places raw CSS needs
+           them (focus rings inside component classes, the sticky bar shadow).
+           Single source of truth remains tailwind.config.js. */
+        --rule: #D3DDD7;
+        --focus-light: #046A44;
+        --focus-dark: #C9F2DE;
+    }
+
+    /* Alpine sets x-cloak on elements that must not flash before it boots.
+       Without this rule every state of the file-upload control renders at
+       once on first paint. */
+    [x-cloak] {
+        display: none !important;
+    }
+
+    html {
+        /* Never smooth-scroll for users who asked for less motion (§9). */
+        -webkit-text-size-adjust: 100%;
+    }
+
+    body {
+        @apply bg-paper text-ink font-sans antialiased;
+        font-size: 16px;
+        line-height: 1.55;
+    }
+
+    /* §10 — focus indicators are never suppressed and never reduced to a
+       colour change. :focus-visible so pointer users do not see rings on
+       every click, keyboard users always do. */
+    :focus-visible {
+        outline: 2px solid var(--focus-light);
+        outline-offset: 2px;
+    }
+
+    /* On forest surfaces the light ring disappears; §2.1 provides a second
+       focus colour precisely for this case. */
+    .on-forest :focus-visible,
+    .bg-forest-900 :focus-visible,
+    .bg-forest-700 :focus-visible {
+        outline-color: var(--focus-dark);
+    }
+
+    /* §3.3 — everything left-aligned, ragged right. No justification: on a
+       360px screen it produces rivers and destroys readability. */
+    h1, h2, h3, h4, h5, h6, p, li, dd, dt {
+        text-align: left;
+    }
+
+    /* §5.5 — numeric columns align. Money, dates, membership numbers and
+       counts read as facts, not as strings. */
+    .figure {
+        font-variant-numeric: tabular-nums lining-nums;
+    }
+
+    /* §9 — reduced motion. Transforms and translations are removed
+       entirely; opacity transitions are capped at 100ms. The reduced-motion
+       path must convey identical information, never less. */
+    @media (prefers-reduced-motion: reduce) {
+        *,
+        *::before,
+        *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 100ms !important;
+            transition-property: opacity, color, background-color, border-color !important;
+            scroll-behavior: auto !important;
+        }
+    }
+}
+
+/* ===========================================================================
+   Type scale — UI brief §3.2
+   Base 16px. Mobile ratio 1.200, desktop 1.250. Line heights unitless.
+   Each step carries its family, weight, line height and tracking, because the
+   brief specifies all four and splitting them across templates loses them.
+   =========================================================================== */
+
+@layer components {
+    .t-display {
+        @apply font-serif font-semibold;
+        font-size: 32px; line-height: 1.12; letter-spacing: -0.02em;
+    }
+
+    .t-h1 {
+        @apply font-serif font-semibold;
+        font-size: 27px; line-height: 1.18; letter-spacing: -0.015em;
+    }
+
+    .t-h2 {
+        @apply font-serif font-semibold;
+        font-size: 23px; line-height: 1.25; letter-spacing: -0.01em;
+    }
+
+    .t-h3 {
+        @apply font-serif font-semibold;
+        font-size: 19px; line-height: 1.30; letter-spacing: -0.005em;
+    }
+
+    /* h4 is sans — card and panel titles are interface, not reading matter. */
+    .t-h4 {
+        @apply font-sans font-semibold;
+        font-size: 17px; line-height: 1.35;
+    }
+
+    /* Serif body gets 1.65 against the sans's 1.55: serifs need the extra
+       air and the article measure is longer (§3.2). */
+    .t-body-lg {
+        @apply font-serif font-normal;
+        font-size: 18px; line-height: 1.65;
+    }
+
+    .t-body {
+        @apply font-sans font-normal;
+        font-size: 16px; line-height: 1.55;
+    }
+
+    .t-body-sm {
+        @apply font-sans font-normal;
+        font-size: 14px; line-height: 1.50;
+    }
+
+    .t-caption {
+        @apply font-sans font-medium;
+        font-size: 13px; line-height: 1.45; letter-spacing: 0.005em;
+    }
+
+    /* §3.4 — 12px is the floor. Nothing smaller ships, including legal
+       footers and admin tables. */
+    .t-micro {
+        @apply font-sans font-medium;
+        font-size: 12px; line-height: 1.40; letter-spacing: 0.01em;
+    }
+
+    /* The membership number, and nothing else. Archivo's width axis at 115
+       is what makes the record panel distinctive without a third family. */
+    .t-record-number {
+        @apply font-sans font-semibold;
+        font-size: 30px; line-height: 1; letter-spacing: 0.06em;
+        font-variation-settings: 'wdth' 115;
+        font-variant-numeric: tabular-nums lining-nums;
+    }
+
+    @screen sm {
+        .t-display { font-size: 48px; }
+        .t-h1 { font-size: 38px; }
+        .t-h2 { font-size: 30px; }
+        .t-h3 { font-size: 24px; }
+        .t-h4 { font-size: 19px; }
+        .t-body-lg { font-size: 19px; }
+        .t-record-number { font-size: 38px; }
+    }
+
+    /* §3.3 — measure. Article body 68 characters, interface prose 60. */
+    .measure-prose { max-width: 68ch; }
+    .measure-ui { max-width: 60ch; }
+
+    /* §11 always-6 — links in prose are underlined. Colour alone fails for
+       colour-blind readers. */
+    .prose-links a {
+        @apply text-forest-700 underline underline-offset-2;
+    }
+
+    /* Skip link (§10) — first focusable element on every page. Visible only
+       when focused, but never display:none, which would remove it from the
+       tab order entirely. */
+    .skip-link {
+        @apply absolute left-4 z-50 bg-white text-forest-800 px-4 py-3 rounded-sm;
+        top: -100px;
+        transition: top 120ms cubic-bezier(0.2, 0, 0, 1);
+    }
+
+    .skip-link:focus {
+        top: 16px;
+    }
+}

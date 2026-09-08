@@ -97,9 +97,14 @@ fi
 # through systemctl. On the Lagos VPS these are systemd units (TRD §10).
 # ---------------------------------------------------------------------------
 say "Starting PostgreSQL and Redis"
-if command -v systemctl >/dev/null 2>&1 && systemctl is-system-running --quiet 2>/dev/null; then
+# Detect systemd by looking for its runtime directory rather than by calling
+# systemctl. In a devcontainer systemctl is a stub that lectures about systemd
+# not running before it fails, which reads like an error in the middle of a
+# setup script when it is merely a fact about containers.
+if [ -d /run/systemd/system ]; then
     $SUDO systemctl enable --now postgresql redis-server
 else
+    echo "    No systemd (container) — using service"
     $SUDO service postgresql start  >/dev/null 2>&1 || true
     $SUDO service redis-server start >/dev/null 2>&1 || true
 fi
