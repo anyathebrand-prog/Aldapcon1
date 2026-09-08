@@ -32,11 +32,17 @@ function staffWithoutTwoFactor(string $role): User
     return $user;
 }
 
+/*
+ * Routes are the panel resources that exist today. The member, payment and
+ * verification screens arrive in Phase 13; asserting against them now would
+ * pass on a 404 rather than on the middleware, which is the wrong reason for
+ * a security test to be green.
+ */
 it('forces an admin with no second factor to enrolment', function (string $path): void {
     actingAs(staffWithoutTwoFactor('admin'))
         ->get($path)
         ->assertRedirect(route('two-factor.setup'));
-})->with(['/admin', '/admin/members', '/admin/payments', '/admin/verifications']);
+})->with(['/admin', '/admin/posts', '/admin/pages', '/admin/faqs']);
 
 it('forces a super admin with no second factor to enrolment', function (): void {
     actingAs(staffWithoutTwoFactor('super_admin'))
@@ -45,10 +51,10 @@ it('forces a super admin with no second factor to enrolment', function (): void 
 });
 
 it('cannot be bypassed by going straight to a deep admin url', function (): void {
-    // The whole point. A redirect that only happens on the dashboard is not a
-    // gate, it is a signpost.
+    // The whole point. A redirect that only happens on the panel's front door
+    // is not a gate, it is a signpost.
     actingAs(staffWithoutTwoFactor('super_admin'))
-        ->get('/admin/users')
+        ->get('/admin/leadership-profiles')
         ->assertRedirect(route('two-factor.setup'));
 });
 
