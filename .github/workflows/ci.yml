@@ -52,7 +52,9 @@ jobs:
       DB_HOST: 127.0.0.1
       DB_PORT: 5432
       DB_DATABASE: aldapcon_test
-      DB_USERNAME: aldapcon
+      # Not the container superuser. See "Create the unprivileged application
+      # role" below — FR-9.8 is unverifiable as a superuser.
+      DB_USERNAME: aldapcon_app
       DB_PASSWORD: secret
       REDIS_HOST: 127.0.0.1
       REDIS_PORT: 6379
@@ -113,6 +115,26 @@ jobs:
         run: |
           PGPASSWORD=secret psql -h 127.0.0.1 -U aldapcon -d postgres \
             -c "CREATE DATABASE aldapcon_test" || true
+
+      # The application must NOT connect as a superuser (TRD §6.2), and the
+      # audit log's append-only guarantee (FR-9.8) depends on that: a
+      # superuser bypasses grant checks entirely, so the REVOKE would protect
+      # nothing and its tests would skip rather than prove anything.
+      #
+      # The postgres service's own role is the container superuser, so a
+      # separate unprivileged role is created here and used for migrations and
+      # tests. citext and pgcrypto are trusted extensions in PostgreSQL 16, so
+      # a non-superuser with CREATE on the database can still install them.
+      - name: Create the unprivileged application role
+        run: |
+          PGPASSWORD=secret psql -h 127.0.0.1 -U aldapcon -d aldapcon_test -v ON_ERROR_STOP=1 <<'SQL'
+          DROP ROLE IF EXISTS aldapcon_app;
+          CREATE ROLE aldapcon_app LOGIN PASSWORD 'secret';
+          GRANT ALL ON SCHEMA public TO aldapcon_app;
+          GRANT ALL ON DATABASE aldapcon_test TO aldapcon_app;
+          SQL
+          PGPASSWORD=secret psql -h 127.0.0.1 -U aldapcon_app -d aldapcon_test \
+            -c "SELECT current_user, usesuper FROM pg_user WHERE usename = current_user"
 
       - name: Run migrations
         run: php artisan migrate --no-interaction --force
