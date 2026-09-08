@@ -59,8 +59,17 @@ it('rejects updates to the audit log at the database level', function (): void {
 
     activity()->log('Original');
 
+    // PostgreSQL aborts the entire transaction on a failed statement, and
+    // RefreshDatabase wraps each test in one — so without a savepoint the
+    // assertion that follows cannot run at all. The savepoint is what makes
+    // "the write was refused AND the row is untouched" checkable as one test
+    // rather than two.
+    DB::statement('SAVEPOINT before_update_attempt');
+
     expect(fn () => DB::statement("UPDATE activity_log SET description = 'Rewritten'"))
         ->toThrow(QueryException::class);
+
+    DB::statement('ROLLBACK TO SAVEPOINT before_update_attempt');
 
     expect(Activity::query()->first()?->description)->toBe('Original');
 });
@@ -75,8 +84,12 @@ it('rejects deletes from the audit log at the database level', function (): void
 
     activity()->log('Original');
 
+    DB::statement('SAVEPOINT before_delete_attempt');
+
     expect(fn () => DB::statement('DELETE FROM activity_log'))
         ->toThrow(QueryException::class);
+
+    DB::statement('ROLLBACK TO SAVEPOINT before_delete_attempt');
 
     expect(Activity::query()->count())->toBe(1);
 });
