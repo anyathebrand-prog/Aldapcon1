@@ -147,11 +147,31 @@ it('locks out after six consecutive failures', function (): void {
             ->assertSessionHasErrors('email');
     }
 
-    post('/login', ['email' => 'ada@example.com', 'password' => 'password'])
-        ->assertSessionHasErrors('email');
+    // Fortify answers a throttled login with a 429 rather than a redirect
+    // carrying session errors, so the assertion is on the outcome alone:
+    // during the cooldown the correct password does not authenticate.
+    post('/login', ['email' => 'ada@example.com', 'password' => 'password']);
 
     assertGuest();
 });
+
+/*
+ * NOT TESTED: that the lockout LIFTS after the cooldown.
+ *
+ * The limiter's expiry is a TTL on a Redis key. Carbon::setTestNow — the test
+ * clock TRD §2.4 names for the Phase 11 lifecycle work — moves the
+ * application's clock, not Redis's, so the key does not expire and a
+ * time-travelled test would still be throttled.
+ *
+ * The alternatives are both worse than an honest gap: waiting fifteen real
+ * minutes in CI, or clearing the limiter by hand, which would assert only
+ * that a cleared limiter permits a login.
+ *
+ * It matters because a lockout that never lifts is an outage — a member who
+ * mistypes six times has no self-service unlock. Worth covering in the Phase
+ * 16 hardening pass with a short-lived limiter configured for the test, and
+ * worth checking by hand before launch.
+ */
 
 it('lets a correct password through before the sixth failure', function (): void {
     $user = User::factory()->create(['email' => 'ada@example.com']);
