@@ -95,7 +95,7 @@ final class FortifyServiceProvider extends ServiceProvider
          *   3. the failure message never reveals whether the email exists
          *      (AC-F4 — enumeration must be impossible through login)
          */
-        Fortify::authenticateUsing(function (Request $request): User {
+        Fortify::authenticateUsing(function (Request $request): ?User {
             $email = (string) $request->input('email');
             $password = (string) $request->input('password');
 
@@ -106,21 +106,36 @@ final class FortifyServiceProvider extends ServiceProvider
                 && $user->canLogIn()
                 && password_verify($password, $user->password);
 
-            LoginAttempt::create([
-                'email' => $email,
-                'ip_address' => $request->ip(),
-                'successful' => $succeeded,
-                'user_agent' => Str::limit((string) $request->userAgent(), 400, ''),
-                'attempted_at' => now(),
-            ]);
+            // Fortify runs this callback TWICE per request — once in
+            // RedirectIfTwoFactorAuthenticatable to find the user, and again
+            // in AttemptToAuthenticate. Without this guard a single successful
+            // login writes two rows, and login_attempts stops being a count of
+            // attempts.
+            if (! $request->attributes->getBoolean('aldapcon.attempt_logged')) {
+                LoginAttempt::create([
+                    'email' => $email,
+                    'ip_address' => $request->ip(),
+                    'successful' => $succeeded,
+                    'user_agent' => Str::limit((string) $request->userAgent(), 400, ''),
+                    'attempted_at' => now(),
+                ]);
+
+                $request->attributes->set('aldapcon.attempt_logged', true);
+            }
 
             if (! $succeeded) {
-                // One message for wrong password, unknown email, and
-                // deactivated account alike. Anything more specific is an
-                // account-enumeration oracle.
-                throw ValidationException::withMessages([
-                    'email' => __('Those details do not match our records.'),
-                ]);
+                // Return null rather than throwing.
+                //
+                // Throwing a ValidationException here skips Fortify's own
+                // failure path — which is what increments the rate limiter.
+                // The lockout in FR-4.5 then never fires, and the bug is
+                // invisible because login still refuses the password.
+                //
+                // Fortify's message is generic for every failure — wrong
+                // password, unknown email and deactivated account alike — so
+                // returning null keeps AC-F4's enumeration guarantee intact
+                // while letting the limiter do its job.
+                return null;
             }
 
             $user->forceFill([
