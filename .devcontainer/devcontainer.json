@@ -1,0 +1,60 @@
+{
+    "$schema": "https://raw.githubusercontent.com/devcontainers/spec/main/schemas/devContainer.schema.json",
+    "name": "ALDAPCON",
+
+    // Ubuntu 24.04 deliberately, not a PHP-specific image.
+    //
+    // TRD §1.1 targets a single Ubuntu LTS VPS in a Lagos data centre, and
+    // 24.04 ships the entire TRD §14 stack from its own repositories — PHP 8.3,
+    // PostgreSQL 16, Redis 7, nginx — with no PPAs and no version pinning.
+    //
+    // Using the plain base image means bin/setup-native.sh runs here exactly as
+    // it will run on the VPS, so the setup path is exercised on every rebuild
+    // rather than being a script nobody has executed.
+    "image": "mcr.microsoft.com/devcontainers/base:ubuntu-24.04",
+
+    "features": {
+        // Node is only needed for Vite. Taking it from a feature keeps it out
+        // of the apt run in setup-native.sh, which then skips it.
+        "ghcr.io/devcontainers/features/node:1": {
+            "version": "22"
+        },
+        "ghcr.io/devcontainers/features/github-cli:1": {}
+    },
+
+    // Installs PHP, PostgreSQL and Redis, creates both databases, installs
+    // dependencies, generates APP_KEY, migrates and verifies. A few minutes on
+    // first create; cached afterwards.
+    "postCreateCommand": "bash ./bin/setup-native.sh",
+
+    // Services do not survive a container restart without systemd, so they are
+    // started again each time the Codespace resumes. Without this, coming back
+    // to a stopped Codespace looks like a broken application.
+    "postStartCommand": "sudo service postgresql start && sudo service redis-server start",
+
+    "forwardPorts": [8000],
+    "portsAttributes": {
+        "8000": {
+            "label": "ALDAPCON",
+            "onAutoForward": "notify"
+        }
+    },
+
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "bmewburn.vscode-intelephense-client",
+                "onecentlin.laravel-blade",
+                "EditorConfig.EditorConfig"
+            ],
+            "settings": {
+                "files.eol": "\n",
+                "editor.formatOnSave": false
+            }
+        }
+    },
+
+    // Not root. The application runs as an unprivileged user on the VPS
+    // (TRD §6.2); developing as root hides permission problems until deploy.
+    "remoteUser": "vscode"
+}

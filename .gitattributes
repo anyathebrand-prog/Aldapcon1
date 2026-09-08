@@ -1,0 +1,45 @@
+# ALDAPCON Platform — line endings and diff behaviour
+#
+# The application runs on Ubuntu (TRD §1.1) but is developed here on Windows.
+# Without this file, Git rewrites shell scripts with CRLF on checkout and the
+# kernel then fails to find the interpreter — `./bin/setup-native.sh` dies with
+# "bad interpreter: /usr/bin/env bash^M", which reads as a broken script rather
+# than a line-ending problem.
+#
+# Everything the server executes or parses is pinned to LF.
+
+* text=auto eol=lf
+
+*.sh        text eol=lf
+*.php       text eol=lf
+*.blade.php text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.json      text eol=lf
+*.neon      text eol=lf
+*.js        text eol=lf
+*.css       text eol=lf
+*.md        text eol=lf
+*.conf      text eol=lf
+*.ini       text eol=lf
+Dockerfile  text eol=lf
+.env.example text eol=lf
+
+bin/*       text eol=lf
+
+# Binary — never touched.
+*.png  binary
+*.jpg  binary
+*.jpeg binary
+*.gif  binary
+*.webp binary
+*.avif binary
+*.ico  binary
+*.pdf  binary
+*.woff  binary
+*.woff2 binary
+*.zip binary
+
+# Keep lockfiles and generated artefacts out of diffs and language stats.
+composer.lock  -diff linguist-generated
+package-lock.json -diff linguist-generated
