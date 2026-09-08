@@ -61,10 +61,13 @@ it('lets the enrolment screen itself through', function (): void {
 });
 
 it('lets staff through once the second factor is confirmed', function (): void {
+    // /admin itself redirects to the panel's first page, so the assertion is
+    // that RequireTwoFactor does NOT send them to enrolment — which is the
+    // behaviour under test.
     $user = User::factory()->withTwoFactor()->create();
     $user->assignRole('admin');
 
-    actingAs($user)->get('/admin')->assertOk();
+    actingAs($user)->get('/admin/posts')->assertOk();
 });
 
 it('does not require a second factor of a publisher', function (): void {
@@ -72,7 +75,7 @@ it('does not require a second factor of a publisher', function (): void {
     // second factor would protect nothing they can reach. Requiring it would
     // be friction without a security gain.
     actingAs(staffWithoutTwoFactor('publisher'))
-        ->get('/admin/news')
+        ->get('/admin/posts')
         ->assertOk();
 });
 

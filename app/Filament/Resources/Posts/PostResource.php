@@ -27,6 +27,8 @@ class PostResource extends Resource
     // Money / Content / Governance.
     protected static string|UnitEnum|null $navigationGroup = 'Content';
 
+    protected static ?string $slug = 'posts';
+
     protected static ?string $navigationLabel = 'News';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;

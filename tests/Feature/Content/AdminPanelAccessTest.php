@@ -45,7 +45,7 @@ it('refuses a member the panel entirely', function (): void {
     $user = User::factory()->create();
     $user->assignRole('member');
 
-    actingAs($user)->get('/admin')->assertForbidden();
+    actingAs($user)->get('/admin/posts')->assertForbidden();
 });
 
 it('lets a publisher manage content', function (string $path): void {

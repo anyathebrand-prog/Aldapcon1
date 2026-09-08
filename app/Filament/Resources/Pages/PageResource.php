@@ -25,6 +25,8 @@ class PageResource extends Resource
     // Money / Content / Governance.
     protected static string|UnitEnum|null $navigationGroup = 'Content';
 
+    protected static ?string $slug = 'pages';
+
     protected static ?string $navigationLabel = 'Pages';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;

@@ -25,6 +25,8 @@ class LeadershipProfileResource extends Resource
     // Money / Content / Governance.
     protected static string|UnitEnum|null $navigationGroup = 'Content';
 
+    protected static ?string $slug = 'leadership-profiles';
+
     protected static ?string $navigationLabel = 'Leadership';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;

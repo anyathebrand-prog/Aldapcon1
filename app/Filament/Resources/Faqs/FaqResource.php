@@ -25,6 +25,8 @@ class FaqResource extends Resource
     // Money / Content / Governance.
     protected static string|UnitEnum|null $navigationGroup = 'Content';
 
+    protected static ?string $slug = 'faqs';
+
     protected static ?string $navigationLabel = 'FAQ';
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;

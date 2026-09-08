@@ -50,7 +50,7 @@ it('redirects an anonymous visitor away from the portal', function (): void {
 });
 
 it('redirects an anonymous visitor away from the admin panel', function (): void {
-    get('/admin')->assertRedirect();
+    get('/admin/posts')->assertRedirect();
 });
 
 it('redirects an anonymous visitor away from two-factor enrolment', function (): void {
