@@ -2,16 +2,22 @@
     "$schema": "https://getcomposer.org/schema.json",
     "name": "aldapcon/platform",
     "type": "project",
-    "description": "ALDAPCON — public website and member platform for the Association of Data Protection Compliance Organizations of Nigeria.",
-    "keywords": ["aldapcon", "laravel"],
+    "description": "ALDAPCON \u2014 public website and member platform for the Association of Data Protection Compliance Organizations of Nigeria.",
+    "keywords": [
+        "aldapcon",
+        "laravel"
+    ],
     "license": "proprietary",
     "require": {
         "php": "^8.3",
+        "filament/filament": "^4.0",
         "laravel/fortify": "^1.39",
         "laravel/framework": "^12.0",
         "laravel/tinker": "^2.10",
         "spatie/laravel-activitylog": "^4.12",
-        "spatie/laravel-permission": "^8.3"
+        "spatie/laravel-permission": "^8.3",
+        "spatie/laravel-sitemap": "^8.0",
+        "spatie/laravel-sluggable": "^4.0"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",
@@ -38,7 +44,8 @@
     },
     "scripts": {
         "post-autoload-dump": [
-            "@php artisan package:discover --ansi"
+            "@php artisan package:discover --ansi",
+            "@php artisan filament:upgrade"
         ],
         "post-update-cmd": [
             "@php artisan vendor:publish --tag=laravel-assets --ansi --force"
