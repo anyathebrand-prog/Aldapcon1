@@ -158,6 +158,27 @@ it('reads consent as the latest row per email and purpose', function (): void {
         ->and(ConsentRecord::query()->where('email', $email)->count())->toBe(2);
 });
 
+it('defines each enum with exactly the approved values', function (string $type, array $expected): void {
+    // The CREATE TYPE guard skips creation when the type already exists, which
+    // is what makes migrate:fresh work. The cost is that changing a value in
+    // the migration would leave a stale type in place unnoticed — so the
+    // labels are asserted rather than assumed.
+    //
+    // PostgreSQL cannot drop an enum value, so a mismatch here is never a
+    // "just edit it" fix: it needs ALTER TYPE ... ADD VALUE and a decision.
+    $labels = DB::table('pg_enum')
+        ->join('pg_type', 'pg_type.oid', '=', 'pg_enum.enumtypid')
+        ->where('pg_type.typname', $type)
+        ->orderBy('pg_enum.enumsortorder')
+        ->pluck('pg_enum.enumlabel')
+        ->all();
+
+    expect($labels)->toBe($expected);
+})->with([
+    ['content_status', ['draft', 'scheduled', 'published']],
+    ['consent_purpose', ['membership_processing', 'marketing', 'event_processing']],
+]);
+
 it('rejects an unknown consent purpose', function (): void {
     // The enum is the guard. A typo in a controller becomes an error, not a
     // silently unrecorded consent.

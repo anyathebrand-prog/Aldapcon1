@@ -54,7 +54,20 @@ return new class extends Migration
                 $values
             ));
 
-            DB::statement("CREATE TYPE {$name} AS ENUM ({$quoted})");
+            // PostgreSQL has no CREATE TYPE IF NOT EXISTS, and `migrate:fresh`
+            // drops TABLES while leaving TYPES behind — so a second run finds
+            // the type still there and fails with 42710. That affects every
+            // test run under RefreshDatabase, and any migrate:fresh on a real
+            // database, so the guard is correctness rather than convenience.
+            DB::statement("
+                DO $$
+                BEGIN
+                    IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = '{$name}') THEN
+                        CREATE TYPE {$name} AS ENUM ({$quoted});
+                    END IF;
+                END
+                $$;
+            ");
         }
     }
 
