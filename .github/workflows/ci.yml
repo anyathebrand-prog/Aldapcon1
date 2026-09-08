@@ -141,3 +141,33 @@ jobs:
 
       - name: Run tests (Pest)
         run: php artisan test
+
+      # Plan §2 lists axe-core in GitHub Actions as Phase 2 verification
+      # tooling. Running it here removes the browser-extension step from the
+      # manual checklist and, more importantly, stops an accessibility
+      # regression depending on somebody remembering to scan.
+      #
+      # Automated tooling catches roughly a third of real WCAG issues (UI brief
+      # §10). The remaining two thirds — whether a focus ring is visible
+      # against real content, whether the mobile menu genuinely traps focus —
+      # still need a person. This does not replace that pass; it removes the
+      # part that never needed one.
+      #
+      # The gallery is scanned because it renders every component in every
+      # state, which is the broadest single target available.
+      - name: Start the application
+        run: |
+          php artisan serve --host=127.0.0.1 --port=8000 > /tmp/serve.log 2>&1 &
+          for _ in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8000/_gallery > /dev/null && break
+            sleep 1
+          done
+          curl -sf -o /dev/null -w "gallery: HTTP %{http_code}\n" http://127.0.0.1:8000/_gallery
+
+      - name: Accessibility scan (axe-core)
+        run: |
+          npx --yes @axe-core/cli@4 \
+            http://127.0.0.1:8000/_gallery \
+            http://127.0.0.1:8000/ \
+            --tags wcag2a,wcag2aa,wcag21a,wcag21aa \
+            --exit
