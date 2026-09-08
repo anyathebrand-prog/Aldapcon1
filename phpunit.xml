@@ -18,6 +18,10 @@
     </source>
     <php>
         <env name="APP_ENV" value="testing"/>
+        <!-- TRD §9 makes APP_DEBUG=false a production launch gate. Tests run
+             with it off so error pages are exercised as visitors see them,
+             not as the debug handler renders them. -->
+        <env name="APP_DEBUG" value="false"/>
         <env name="APP_MAINTENANCE_DRIVER" value="file"/>
         <env name="BCRYPT_ROUNDS" value="4"/>
         <!--
