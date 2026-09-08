@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 use App\Domain\Identity\Models\User;
 use Database\Seeders\RoleSeeder;
+use Illuminate\Support\Facades\View;
+use Illuminate\Support\ViewErrorBag;
 
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\seed;
@@ -85,8 +87,11 @@ it('offers a recovery code route on the challenge screen', function (): void {
     // Recovery codes are the only way back for an admin who has lost their
     // phone, and an association with one to three staff has nobody else who
     // can restore that access (App Flow A-06).
-    $user = User::factory()->withTwoFactor()->create();
-    $user->assignRole('admin');
+    //
+    // $errors is shared by the web middleware, so rendering the view directly
+    // needs it bound explicitly — otherwise the failure is about the test
+    // harness rather than the screen.
+    View::share('errors', new ViewErrorBag);
 
     $html = view('auth.two-factor-challenge')->render();
 

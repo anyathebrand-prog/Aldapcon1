@@ -5,7 +5,7 @@ declare(strict_types=1);
 use App\Domain\Identity\Models\LoginAttempt;
 use App\Domain\Identity\Models\User;
 use Database\Seeders\RoleSeeder;
-use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Cache;
 
 use function Pest\Laravel\actingAs;
 use function Pest\Laravel\assertGuest;
@@ -31,7 +31,16 @@ function errorFor(string $field): string
  */
 beforeEach(function (): void {
     seed(RoleSeeder::class);
-    RateLimiter::clear('login');
+
+    // The login limiter lives in Redis, and RefreshDatabase only rolls back
+    // PostgreSQL. Without this, failed attempts leak between tests: by the
+    // fourth test ada@example.com is already throttled, successful logins
+    // never reach the credential check, and the failures look like broken
+    // authentication rather than shared state.
+    //
+    // RateLimiter::clear() takes the exact key, which here is a hash of email
+    // and IP, so flushing the store is both simpler and more thorough.
+    Cache::flush();
 });
 
 it('shows the login screen', function (): void {
