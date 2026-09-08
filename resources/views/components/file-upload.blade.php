@@ -72,7 +72,13 @@
         },
     }"
 >
-    <span class="t-caption text-ink">{{ $label }}</span>
+    {{-- A real <label for>, not a styled span.
+         The input itself is sr-only (the visible affordance is the dropzone
+         and its button), so without this association the control has no
+         accessible name whatsoever — axe reports it as "Form elements must
+         have labels", and a screen-reader user reaches an unnamed file input
+         at the one point in the product where they have already paid. --}}
+    <label for="{{ $id }}" class="t-caption text-ink">{{ $label }}</label>
 
     {{-- Limits ABOVE the control. This is the point of the component. --}}
     <p id="{{ $limitsId }}" class="t-body-sm text-ink-muted">
