@@ -8,6 +8,7 @@ use App\Domain\Content\Models\Page;
 use App\Domain\Content\Models\PolicyVersion;
 use App\Domain\Identity\Models\ConsentRecord;
 use App\Domain\Identity\Models\User;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
@@ -46,7 +47,7 @@ it('rejects a duplicate email regardless of case', function (): void {
     User::factory()->create(['email' => 'ada@example.com']);
 
     expect(fn () => User::factory()->create(['email' => 'ADA@EXAMPLE.COM']))
-        ->toThrow(Throwable::class);
+        ->toThrow(QueryException::class);
 });
 
 it('rejects a confirmed second factor with no secret', function (): void {
@@ -57,7 +58,7 @@ it('rejects a confirmed second factor with no secret', function (): void {
     expect(fn () => DB::table('users')->where('id', $user->id)->update([
         'two_factor_confirmed_at' => now(),
         'two_factor_secret' => null,
-    ]))->toThrow(Throwable::class);
+    ]))->toThrow(QueryException::class);
 });
 
 it('requires alt text on media', function (): void {
@@ -75,7 +76,7 @@ it('requires alt text on media', function (): void {
         'alt_text' => null,
         'uploaded_by_user_id' => $user->id,
         'created_at' => now(),
-    ]))->toThrow(Throwable::class);
+    ]))->toThrow(QueryException::class);
 });
 
 it('accepts media with alt text', function (): void {
@@ -97,7 +98,7 @@ it('rejects a published announcement with no publication date', function (): voi
         'created_by_user_id' => $user->id,
         'created_at' => now(),
         'updated_at' => now(),
-    ]))->toThrow(Throwable::class);
+    ]))->toThrow(QueryException::class);
 });
 
 it('treats an announcement as visible only when published and dated', function (): void {
@@ -117,7 +118,7 @@ it('rejects a second policy version with the same slug and version', function ()
     PolicyVersion::factory()->create(['slug' => 'privacy-policy', 'version' => '1.0']);
 
     expect(fn () => PolicyVersion::factory()->create(['slug' => 'privacy-policy', 'version' => '1.0']))
-        ->toThrow(Throwable::class);
+        ->toThrow(QueryException::class);
 });
 
 it('returns the policy version in force', function (): void {
@@ -189,7 +190,7 @@ it('rejects an unknown consent purpose', function (): void {
         'consent_text_snapshot' => 'x',
         'ip_address' => '127.0.0.1',
         'created_at' => now(),
-    ]))->toThrow(Throwable::class);
+    ]))->toThrow(QueryException::class);
 });
 
 it('marks system pages as undeletable', function (): void {

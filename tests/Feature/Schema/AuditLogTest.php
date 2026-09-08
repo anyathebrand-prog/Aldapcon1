@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use App\Domain\Identity\Models\User;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Spatie\Activitylog\Models\Activity;
 
@@ -59,7 +60,7 @@ it('rejects updates to the audit log at the database level', function (): void {
     activity()->log('Original');
 
     expect(fn () => DB::statement("UPDATE activity_log SET description = 'Rewritten'"))
-        ->toThrow(Throwable::class);
+        ->toThrow(QueryException::class);
 
     expect(Activity::query()->first()?->description)->toBe('Original');
 });
@@ -75,7 +76,7 @@ it('rejects deletes from the audit log at the database level', function (): void
     activity()->log('Original');
 
     expect(fn () => DB::statement('DELETE FROM activity_log'))
-        ->toThrow(Throwable::class);
+        ->toThrow(QueryException::class);
 
     expect(Activity::query()->count())->toBe(1);
 });
