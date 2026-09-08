@@ -1,0 +1,121 @@
+# ALDAPCON Platform — continuous integration
+#
+# Plan §2, rule 10: Pint, PHPStan and Pest must pass before a phase is called
+# complete. Plan Phase 1: CI runs on push and blocks merge on failure.
+#
+# The service versions here match TRD §14 exactly. CI passing against a
+# different PostgreSQL than production runs is a test that proves nothing.
+
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    name: Lint, analyse and test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_DB: aldapcon_test
+          POSTGRES_USER: aldapcon
+          POSTGRES_PASSWORD: secret
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd="pg_isready -U aldapcon -d aldapcon_test"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=12
+
+      redis:
+        image: redis:7-alpine
+        ports: ["6379:6379"]
+        options: >-
+          --health-cmd="redis-cli ping"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=12
+
+    env:
+      DB_CONNECTION: pgsql
+      DB_HOST: 127.0.0.1
+      DB_PORT: 5432
+      DB_DATABASE: aldapcon_test
+      DB_USERNAME: aldapcon
+      DB_PASSWORD: secret
+      REDIS_HOST: 127.0.0.1
+      REDIS_PORT: 6379
+      CACHE_STORE: redis
+      SESSION_DRIVER: redis
+      QUEUE_CONNECTION: redis
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: pdo_pgsql, pgsql, redis, intl, zip, gd, bcmath, pcntl
+          coverage: none
+          tools: composer:v2
+
+      - name: Cache Composer packages
+        uses: actions/cache@v4
+        with:
+          path: ~/.composer/cache
+          key: composer-${{ runner.os }}-${{ hashFiles('composer.lock') }}
+          restore-keys: composer-${{ runner.os }}-
+
+      - name: Install PHP dependencies
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Prepare environment
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      # TRD §6.1 — dependency scanning. A known-vulnerable package in a
+      # payment application is not a warning, it is a defect.
+      - name: Audit dependencies
+        run: composer audit --no-interaction
+
+      - name: Check formatting (Pint)
+        run: ./vendor/bin/pint --test
+
+      - name: Static analysis (PHPStan)
+        run: ./vendor/bin/phpstan analyse --no-progress
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Build assets
+        run: npm run build
+
+      - name: Create the test database
+        run: |
+          PGPASSWORD=secret psql -h 127.0.0.1 -U aldapcon -d postgres \
+            -c "CREATE DATABASE aldapcon_test" || true
+
+      - name: Run migrations
+        run: php artisan migrate --no-interaction --force
+
+      - name: Run tests (Pest)
+        run: php artisan test

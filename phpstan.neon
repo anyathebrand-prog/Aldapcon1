@@ -1,0 +1,31 @@
+# ALDAPCON Platform — static analysis
+#
+# Plan §2, rule 10: PHPStan at level 5 or above must pass before a phase is
+# called complete. Level 6 is set here deliberately — it adds missing-iterable-
+# value-type and missing-return-type reporting, which is what keeps the money
+# and membership code honest about what it returns. If it proves too noisy on a
+# later phase, drop to 5 with a note, never silence individual money paths.
+
+includes:
+    - vendor/larastan/larastan/extension.neon
+
+parameters:
+    level: 6
+
+    paths:
+        - app
+        - database
+        - routes
+        - tests
+
+    excludePaths:
+        - app/Domain/*/Models/.gitkeep
+
+    # Domain boundaries (TRD §1.2, plan §2). Membership reacts to
+    # PaymentVerified; it never calls into Payments. Enforced by review today;
+    # this is where the lint rule lands once there are domain classes to check.
+    # See Phase 6 — the first phase with cross-domain code to constrain.
+
+    ignoreErrors: []
+
+    reportUnmatchedIgnoredErrors: true
