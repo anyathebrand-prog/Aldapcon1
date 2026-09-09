@@ -1,4 +1,4 @@
-<x-mail::layout :subject="'About your ALDAPCON application'" :preheader="$preheader">
+<x-mail.layout :subject="'About your ALDAPCON application'" :preheader="$preheader">
 
     <p style="margin:0 0 20px;">Dear {{ $applicant->full_name }},</p>
 
@@ -43,4 +43,4 @@
         The ALDAPCON secretariat
     </p>
 
-</x-mail::layout>
+</x-mail.layout>

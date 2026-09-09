@@ -38,11 +38,20 @@ final class AppServiceProvider extends ServiceProvider
         // the plan's structure is the approved one.
         Blade::anonymousComponentPath(resource_path('views/layouts'), 'layouts');
 
-        // Email templates and their components. Registered as a namespace so
-        // <x-mail::layout> resolves to views/mail/layout.blade.php and
-        // <x-mail::components.button> to views/mail/components/button.blade.php,
-        // which is the structure the plan's Phase 7 file list specifies.
-        Blade::anonymousComponentPath(resource_path('views/mail'), 'mail');
+        /*
+         * NOTE: email components are deliberately NOT registered as a `mail`
+         * component namespace.
+         *
+         * Laravel already owns a `mail` view namespace for its Markdown mail
+         * components, and registering another produced "No hint path defined
+         * for [mail]" on every send. So the components live at
+         * resources/views/components/mail/ and resolve as <x-mail.layout>
+         * through Blade's default path, while the templates themselves stay at
+         * resources/views/mail/ as the plan's Phase 7 file list specifies.
+         *
+         * A small deviation from that file list, forced by a framework
+         * namespace that was already taken.
+         */
 
         /*
          * FR-10.1 — the delivery log.

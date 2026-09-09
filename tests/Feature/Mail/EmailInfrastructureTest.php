@@ -73,7 +73,10 @@ it('records an email before the provider is called', function (): void {
     // "it failed at 14:02".
     $applicant = Applicant::factory()->create(['email' => 'ada@example.com']);
 
-    Mail::to($applicant->email)->send(new ApplicationAcknowledgement($applicant));
+    // sendNow, not send: these mailables are queued, and a queued mailable
+    // never reaches the transport in a test, so the delivery events that
+    // write the log would never fire.
+    Mail::to($applicant->email)->sendNow(new ApplicationAcknowledgement($applicant));
 
     $log = EmailLog::query()->first();
 
@@ -85,7 +88,10 @@ it('records an email before the provider is called', function (): void {
 it('marks a delivered email as sent', function (): void {
     $applicant = Applicant::factory()->create();
 
-    Mail::to($applicant->email)->send(new ApplicationAcknowledgement($applicant));
+    // sendNow, not send: these mailables are queued, and a queued mailable
+    // never reaches the transport in a test, so the delivery events that
+    // write the log would never fire.
+    Mail::to($applicant->email)->sendNow(new ApplicationAcknowledgement($applicant));
 
     expect(EmailLog::query()->first()?->status)->toBe('sent');
 });
@@ -97,7 +103,10 @@ it('never stores the email body', function (): void {
     // a year.
     $applicant = Applicant::factory()->create();
 
-    Mail::to($applicant->email)->send(new ApplicationAcknowledgement($applicant));
+    // sendNow, not send: these mailables are queued, and a queued mailable
+    // never reaches the transport in a test, so the delivery events that
+    // write the log would never fire.
+    Mail::to($applicant->email)->sendNow(new ApplicationAcknowledgement($applicant));
 
     $columns = array_keys(EmailLog::query()->first()?->getAttributes() ?? []);
 

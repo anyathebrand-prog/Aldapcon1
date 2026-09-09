@@ -1,4 +1,4 @@
-<x-mail::layout :subject="'We have received your ALDAPCON application'" :preheader="$preheader">
+<x-mail.layout :subject="'We have received your ALDAPCON application'" :preheader="$preheader">
 
     <p style="margin:0 0 20px;">Dear {{ $applicant->full_name }},</p>
 
@@ -9,7 +9,7 @@
         stored securely. Your application is now with the association for review.
     </p>
 
-    <x-mail::components.record :rows="[
+    <x-mail.record :rows="[
         'Application reference' => $applicant->uuid,
         'Membership category' => $applicant->category->name,
         'Submitted' => $applicant->submitted_at?->timezone('Africa/Lagos')->format('j F Y'),
@@ -33,4 +33,4 @@
         The ALDAPCON secretariat
     </p>
 
-</x-mail::layout>
+</x-mail.layout>
