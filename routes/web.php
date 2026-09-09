@@ -3,21 +3,46 @@
 declare(strict_types=1);
 
 use App\Http\Controllers\Admin\TwoFactorSetupController;
-use App\Http\Middleware\RequireTwoFactor;
+use App\Http\Controllers\Public\HomeController;
+use App\Http\Controllers\Public\NewsController;
+use App\Http\Controllers\Public\PageController;
+use App\Http\Controllers\Public\SearchController;
 use Illuminate\Support\Facades\App;
 use Illuminate\Support\Facades\Route;
 
 /*
- * Phase 2 placeholder. Phase 5 replaces this with the real public pages.
- */
-Route::get('/', fn () => view('welcome'))->name('home');
+|--------------------------------------------------------------------------
+| Public site — FR-1.1, FR-1.5, FR-1.6
+|--------------------------------------------------------------------------
+|
+| The App Flow screens Phase 5 owns. Membership (P-04) arrives in Phase 6,
+| events (P-07, P-08) in Phase 12, contact (P-10) in Phase 15.
+|
+| Legal pages are served through the same editable Page model as About, so a
+| new policy version can be published without a deploy (FR-12.4).
+*/
+Route::get('/', HomeController::class)->name('home');
+
+Route::get('/news', [NewsController::class, 'index'])->name('news.index');
+Route::get('/news/{slug}', [NewsController::class, 'show'])->name('news.show');
+
+Route::get('/leadership', [PageController::class, 'leadership'])->name('leadership');
+Route::get('/faq', [PageController::class, 'faq'])->name('faq');
+Route::get('/search', SearchController::class)->name('search');
 
 /*
- * A-07 — two-factor enrolment (plan C-4).
- *
- * Behind `auth` so it cannot be reached anonymously, but deliberately NOT
- * behind RequireTwoFactor: that middleware redirects HERE, so guarding this
+|--------------------------------------------------------------------------
+| Authentication — Phase 4
+|--------------------------------------------------------------------------
+*/
+
+/*
+ * A-07 two-factor enrolment (plan C-4). Behind `auth` but deliberately NOT
+ * behind RequireTwoFactor: that middleware redirects here, so guarding this
  * route with it would loop.
+ *
+ * Declared before the /{slug} catch-all so an admin cannot create a page
+ * whose slug shadows it.
  */
 Route::middleware(['auth'])->group(function (): void {
     Route::get('/admin/two-factor-setup', TwoFactorSetupController::class)
@@ -25,68 +50,35 @@ Route::middleware(['auth'])->group(function (): void {
 });
 
 /*
- * Admin surface — FR-9.7, AC-F9.
- *
- * Three gates, in order: authenticated, second factor confirmed, and holding
- * a permission that the role actually grants. Filament replaces the
- * placeholder in Phase 5; the middleware stack does not change.
- *
- * The `can:` gate is what makes AC-F9 provable. A Publisher holds no grant
- * touching member or payment data (Phase 3 RoleSeeder), so this refuses them
- * by direct URL rather than by a hidden menu item.
- */
-Route::middleware(['auth', 'verified', RequireTwoFactor::class])->group(function (): void {
-    Route::get('/admin', fn () => view('admin.placeholder'))
-        ->middleware('can:members.view')
-        ->name('admin.dashboard');
-
-    Route::get('/admin/members', fn () => view('admin.placeholder'))
-        ->middleware('can:members.view')
-        ->name('admin.members');
-
-    Route::get('/admin/payments', fn () => view('admin.placeholder'))
-        ->middleware('can:payments.view')
-        ->name('admin.payments');
-
-    Route::get('/admin/verifications', fn () => view('admin.placeholder'))
-        ->middleware('can:verifications.view')
-        ->name('admin.verifications');
-
-    Route::get('/admin/audit-log', fn () => view('admin.placeholder'))
-        ->middleware('can:audit.view')
-        ->name('admin.audit');
-
-    Route::get('/admin/users', fn () => view('admin.placeholder'))
-        ->middleware('can:users.manage')
-        ->name('admin.users');
-
-    Route::get('/admin/settings', fn () => view('admin.placeholder'))
-        ->middleware('can:settings.manage')
-        ->name('admin.settings');
-
-    // Publisher's permitted surface. Events are content for this purpose
-    // (plan C-6).
-    Route::get('/admin/news', fn () => view('admin.placeholder'))
-        ->middleware('can:content.manage')
-        ->name('admin.news');
-
-    Route::get('/admin/events', fn () => view('admin.placeholder'))
-        ->middleware('can:events.manage')
-        ->name('admin.events');
-});
-
-/*
- * Member portal. Ownership, not permission (Schema §5.1) — a member reaches
- * their own rows through the authenticated user, never through a parameter.
- * Built out in Phase 10.
+ * Member portal. Ownership, not permission (Schema §5.1). Built out in
+ * Phase 10.
  */
 Route::middleware(['auth', 'verified'])->group(function (): void {
     Route::get('/portal', fn () => view('portal.placeholder'))->name('portal');
 });
 
 /*
- * Component gallery — registered only outside production.
- */
+|--------------------------------------------------------------------------
+| Development only
+|--------------------------------------------------------------------------
+*/
 if (! App::environment('production')) {
     Route::get('/_gallery', fn () => view('gallery'))->name('gallery');
 }
+
+/*
+|--------------------------------------------------------------------------
+| Editable pages, by slug — LAST
+|--------------------------------------------------------------------------
+|
+| Deliberately the final route in the file. It matches any single lowercase
+| segment, so declaring it earlier would swallow /news, /portal and the
+| Filament panel at /admin.
+|
+| The admin panel registers its own routes from AdminPanelProvider, which is a
+| service provider and therefore loads before this file — but the constraint
+| and ordering are kept explicit rather than relying on that.
+*/
+Route::get('/{slug}', [PageController::class, 'show'])
+    ->where('slug', '[a-z0-9-]+')
+    ->name('page');

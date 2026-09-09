@@ -10,48 +10,33 @@ use function Pest\Laravel\get;
 use function Pest\Laravel\seed;
 
 /**
- * Every role against every protected route, BY DIRECT URL — FR-9.7, AC-F9,
- * TRD §8 Tier 1.
+ * Role permissions, BY DIRECT URL — FR-9.7, AC-F9, TRD §8 Tier 1.
  *
  * The plan is explicit about how this must be tested: "test by direct URL,
- * never by clicking through the UI". A menu item that is hidden is not
- * authorisation (plan §2 rule 6), and a test that navigates by clicking can
- * only ever prove the menu is hidden.
+ * never by clicking through the UI". A hidden menu item is not authorisation
+ * (plan §2 rule 6), and a test that navigates by clicking can only ever prove
+ * the menu is hidden.
  *
- * AC-F9: "Role permissions hold under direct URL access, not only through
- * hidden menu items."
+ * ── Scope note ───────────────────────────────────────────────────────────
  *
- * The Publisher rows are the ones that matter most. AC-F4 and AC-F9 both
- * single out a Publisher reaching for member and payment data, because that
- * is the realistic internal breach: a content editor who is trusted with the
- * news section and should never see a member's licence certificate.
+ * Phase 4 asserted this matrix against placeholder admin routes. Phase 5
+ * replaced those with the Filament panel, so the panel-level checks now live
+ * in tests/Feature/Content/AdminPanelAccessTest.php against the real
+ * resources.
+ *
+ * What remains here is what Phase 5 did not move: the permission GRANTS
+ * themselves, and the routes outside the panel. The member, payment and
+ * verification screens arrive in Phase 13 and their route-level assertions
+ * belong with them — asserting against routes that do not exist yet would
+ * pass for the wrong reason.
+ * ─────────────────────────────────────────────────────────────────────────
  */
 beforeEach(function (): void {
     seed(RoleSeeder::class);
 });
 
-/**
- * @return array<string, string>
- */
-function adminRoutes(): array
+function roledUser(string $role): User
 {
-    return [
-        'dashboard' => '/admin',
-        'members' => '/admin/members',
-        'payments' => '/admin/payments',
-        'verifications' => '/admin/verifications',
-        'audit log' => '/admin/audit-log',
-        'users' => '/admin/users',
-        'settings' => '/admin/settings',
-        'news' => '/admin/news',
-        'events' => '/admin/events',
-    ];
-}
-
-function staffUser(string $role): User
-{
-    // withTwoFactor, because RequireTwoFactor would otherwise redirect every
-    // staff request to enrolment and mask what is actually being tested.
     $user = User::factory()->withTwoFactor()->create();
     $user->assignRole($role);
 
@@ -60,75 +45,68 @@ function staffUser(string $role): User
 
 // ─────────────────────────────────────────────── unauthenticated
 
-it('redirects an anonymous visitor away from every admin route', function (string $path): void {
-    get($path)->assertRedirect('/login');
-})->with(adminRoutes());
-
 it('redirects an anonymous visitor away from the portal', function (): void {
     get('/portal')->assertRedirect('/login');
 });
 
-// ─────────────────────────────────────────────── publisher
+it('redirects an anonymous visitor away from the admin panel', function (): void {
+    get('/admin/posts')->assertRedirect();
+});
 
-it('refuses a publisher every member, payment and certificate route', function (string $path): void {
-    // The single most important assertion in this phase.
-    actingAs(staffUser('publisher'))->get($path)->assertForbidden();
+it('redirects an anonymous visitor away from two-factor enrolment', function (): void {
+    get('/admin/two-factor-setup')->assertRedirect('/login');
+});
+
+// ─────────────────────────────────────────────── permission grants
+
+it('never grants a publisher member, payment or certificate access', function (string $permission): void {
+    // The single most important assertion in the authorisation model, and the
+    // reason it holds at every route: the grant does not exist, so there is
+    // nothing for a controller or a Filament resource to get wrong.
+    //
+    // AC-F9 singles out this case because it is the realistic internal
+    // breach — a content editor trusted with the news section who should
+    // never see a member's licence certificate.
+    expect(roledUser('publisher')->can($permission))->toBeFalse();
 })->with([
-    '/admin',
-    '/admin/members',
-    '/admin/payments',
-    '/admin/verifications',
-    '/admin/audit-log',
-    '/admin/users',
-    '/admin/settings',
+    'members.view', 'members.update', 'members.export', 'members.delete',
+    'payments.view', 'payments.export', 'refunds.record',
+    'applicants.view',
+    'verifications.view', 'verifications.decide', 'documents.view',
+    'data_requests.manage',
+    'users.manage', 'audit.view', 'settings.manage',
 ]);
 
-it('allows a publisher their own content and events routes', function (string $path): void {
-    // C-6 — events are content for this purpose. Confirmed before Phase 3
-    // seeded the grants.
-    actingAs(staffUser('publisher'))->get($path)->assertOk();
-})->with(['/admin/news', '/admin/events']);
+it('grants a publisher content and events and nothing else', function (): void {
+    $publisher = roledUser('publisher');
 
-// ─────────────────────────────────────────────── member
+    expect($publisher->can('content.manage'))->toBeTrue()
+        ->and($publisher->can('events.manage'))->toBeTrue()
+        ->and($publisher->getAllPermissions())->toHaveCount(2);
+});
 
-it('refuses a member every admin route', function (string $path): void {
-    // FR-9.7 — the member role holds no administrative permission at all.
-    // Portal access is by ownership, not permission.
+it('withholds the four super admin reserves from an admin', function (string $permission): void {
+    expect(roledUser('admin')->can($permission))->toBeFalse();
+})->with(['users.manage', 'audit.view', 'settings.manage', 'members.delete']);
+
+it('grants an admin the verification permissions', function (string $permission): void {
+    expect(roledUser('admin')->can($permission))->toBeTrue();
+})->with(['verifications.view', 'verifications.decide', 'documents.view']);
+
+it('grants a member no administrative permission at all', function (): void {
+    // FR-9.7, audit IG-12. Portal access is by record ownership, not by
+    // permission (Schema §5.1).
     $user = User::factory()->create();
     $user->assignRole('member');
 
-    actingAs($user)->get($path)->assertForbidden();
-})->with(adminRoutes());
+    expect($user->getAllPermissions())->toBeEmpty();
+});
 
-it('allows a member into the portal', function (): void {
+// ─────────────────────────────────────────────── portal
+
+it('lets a member into the portal', function (): void {
     $user = User::factory()->create();
     $user->assignRole('member');
 
     actingAs($user)->get('/portal')->assertOk();
 });
-
-// ─────────────────────────────────────────────── admin
-
-it('allows an admin the operational routes', function (string $path): void {
-    actingAs(staffUser('admin'))->get($path)->assertOk();
-})->with([
-    '/admin',
-    '/admin/members',
-    '/admin/payments',
-    '/admin/verifications',
-    '/admin/news',
-    '/admin/events',
-]);
-
-it('refuses an admin the four super admin reserves', function (string $path): void {
-    // members.delete, users.manage, audit.view and settings.manage are
-    // Super Admin only (Schema §2.2). audit.view in particular: "a log an
-    // actor can read is a log they can plan around" (§5.3 rule 3).
-    actingAs(staffUser('admin'))->get($path)->assertForbidden();
-})->with(['/admin/audit-log', '/admin/users', '/admin/settings']);
-
-// ─────────────────────────────────────────────── super admin
-
-it('allows a super admin everything', function (string $path): void {
-    actingAs(staffUser('super_admin'))->get($path)->assertOk();
-})->with(adminRoutes());

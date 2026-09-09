@@ -32,11 +32,17 @@ function staffWithoutTwoFactor(string $role): User
     return $user;
 }
 
+/*
+ * Routes are the panel resources that exist today. The member, payment and
+ * verification screens arrive in Phase 13; asserting against them now would
+ * pass on a 404 rather than on the middleware, which is the wrong reason for
+ * a security test to be green.
+ */
 it('forces an admin with no second factor to enrolment', function (string $path): void {
     actingAs(staffWithoutTwoFactor('admin'))
         ->get($path)
         ->assertRedirect(route('two-factor.setup'));
-})->with(['/admin', '/admin/members', '/admin/payments', '/admin/verifications']);
+})->with(['/admin', '/admin/posts', '/admin/pages', '/admin/faqs']);
 
 it('forces a super admin with no second factor to enrolment', function (): void {
     actingAs(staffWithoutTwoFactor('super_admin'))
@@ -45,10 +51,10 @@ it('forces a super admin with no second factor to enrolment', function (): void 
 });
 
 it('cannot be bypassed by going straight to a deep admin url', function (): void {
-    // The whole point. A redirect that only happens on the dashboard is not a
-    // gate, it is a signpost.
+    // The whole point. A redirect that only happens on the panel's front door
+    // is not a gate, it is a signpost.
     actingAs(staffWithoutTwoFactor('super_admin'))
-        ->get('/admin/users')
+        ->get('/admin/leadership-profiles')
         ->assertRedirect(route('two-factor.setup'));
 });
 
@@ -61,10 +67,13 @@ it('lets the enrolment screen itself through', function (): void {
 });
 
 it('lets staff through once the second factor is confirmed', function (): void {
+    // /admin itself redirects to the panel's first page, so the assertion is
+    // that RequireTwoFactor does NOT send them to enrolment — which is the
+    // behaviour under test.
     $user = User::factory()->withTwoFactor()->create();
     $user->assignRole('admin');
 
-    actingAs($user)->get('/admin')->assertOk();
+    actingAs($user)->get('/admin/posts')->assertOk();
 });
 
 it('does not require a second factor of a publisher', function (): void {
@@ -72,7 +81,7 @@ it('does not require a second factor of a publisher', function (): void {
     // second factor would protect nothing they can reach. Requiring it would
     // be friction without a security gain.
     actingAs(staffWithoutTwoFactor('publisher'))
-        ->get('/admin/news')
+        ->get('/admin/posts')
         ->assertOk();
 });
 

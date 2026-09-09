@@ -5,6 +5,9 @@ declare(strict_types=1);
 namespace App\Domain\Identity\Models;
 
 use Database\Factories\UserFactory;
+use Filament\Models\Contracts\FilamentUser;
+use Filament\Models\Contracts\HasName;
+use Filament\Panel;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -25,7 +28,7 @@ use Spatie\Permission\Traits\HasRoles;
  * @property string $phone
  * @property bool $is_active
  */
-final class User extends Authenticatable
+final class User extends Authenticatable implements FilamentUser, HasName
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory;
@@ -95,5 +98,34 @@ final class User extends Authenticatable
     public function requiresTwoFactor(): bool
     {
         return $this->hasAnyRole(['super_admin', 'admin']);
+    }
+
+    /**
+     * The outermost gate on the Filament panel — FR-9.7, AC-F9.
+     *
+     * A member must not reach the admin panel at all: not a 403 inside it, not
+     * an empty dashboard, but refused at the door. Per-resource permissions
+     * still apply beneath this; this only decides who sees a panel.
+     *
+     * Publisher is included because FR-9.7 gives them content and events to
+     * manage, and the panel is where that happens (plan C-6).
+     */
+    public function canAccessPanel(Panel $panel): bool
+    {
+        return $this->canLogIn()
+            && $this->hasAnyRole(['super_admin', 'admin', 'publisher']);
+    }
+
+    /**
+     * The name Filament shows in the panel.
+     *
+     * Filament looks for a `name` attribute by default; Schema §2.1 calls the
+     * column `full_name`, so the contract is implemented rather than the
+     * column renamed. Without this the panel raises a TypeError on every page
+     * — getUserName() is declared to return string and finds null.
+     */
+    public function getFilamentName(): string
+    {
+        return $this->full_name;
     }
 }
