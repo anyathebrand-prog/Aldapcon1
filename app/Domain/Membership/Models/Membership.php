@@ -89,7 +89,12 @@ final class Membership extends Model
             return 'expired';
         }
 
-        return $this->expires_at->diffInDays(now()) <= $expiringSoonDays
+        // Signed, and measured FROM now: Carbon returns a negative figure when
+        // the target is in the future, so an unsigned comparison would make
+        // every membership look like it expires today.
+        $daysRemaining = now()->diffInDays($this->expires_at, false);
+
+        return $daysRemaining <= $expiringSoonDays
             ? 'expiring_soon'
             : 'active';
     }

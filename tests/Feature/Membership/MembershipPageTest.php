@@ -56,10 +56,12 @@ it('says before payment that a category needs verification', function (): void {
     // human must approve them has been surprised at the worst moment.
     MembershipCategory::factory()->verifying()->create(['name' => 'Licensed DPCO']);
 
+    // Short fragments: the template wraps these sentences across lines, and
+    // assertSee matches the rendered source rather than normalised text.
     get('/membership')
         ->assertOk()
         ->assertSee('NDPC licence number')
-        ->assertSee('Membership begins once an administrator has reviewed it.');
+        ->assertSee('Membership begins once an administrator');
 });
 
 it('blocks the join flow when no category is active', function (): void {
@@ -101,6 +103,17 @@ it('lets an admin manage categories but never a publisher', function (): void {
     $publisher = User::factory()->withTwoFactor()->create();
     $publisher->assignRole('publisher');
 
+    // The grant is the guarantee: `categories.manage` is simply absent from
+    // the Publisher set, so there is nothing for a resource to get wrong.
+    // Filament answers an unauthorised resource with a redirect rather than a
+    // 403, so the route assertion is that they do NOT reach it — not a
+    // specific status code, which would couple this to Filament's behaviour.
+    expect($admin->can('categories.manage'))->toBeTrue()
+        ->and($publisher->can('categories.manage'))->toBeFalse();
+
     actingAs($admin)->get('/admin/membership-categories')->assertOk();
-    actingAs($publisher)->get('/admin/membership-categories')->assertForbidden();
+
+    $refused = actingAs($publisher)->get('/admin/membership-categories');
+
+    expect($refused->getStatusCode())->not->toBe(200);
 });
