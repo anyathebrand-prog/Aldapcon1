@@ -11,6 +11,8 @@ use App\Domain\Content\Models\Post;
 use App\Domain\Content\Observers\PostObserver;
 use App\Domain\Content\Policies\ContentPolicy;
 use App\Domain\Content\Policies\PagePolicy;
+use App\Domain\Membership\Models\MembershipCategory;
+use App\Domain\Membership\Policies\MembershipCategoryPolicy;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\Gate;
@@ -63,5 +65,6 @@ final class AppServiceProvider extends ServiceProvider
         Gate::policy(LeadershipProfile::class, ContentPolicy::class);
         Gate::policy(Faq::class, ContentPolicy::class);
         Gate::policy(Page::class, PagePolicy::class);
+        Gate::policy(MembershipCategory::class, MembershipCategoryPolicy::class);
     }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use App\Http\Controllers\Admin\TwoFactorSetupController;
 use App\Http\Controllers\Public\HomeController;
+use App\Http\Controllers\Public\MembershipController;
 use App\Http\Controllers\Public\NewsController;
 use App\Http\Controllers\Public\PageController;
 use App\Http\Controllers\Public\SearchController;
@@ -25,6 +26,9 @@ Route::get('/', HomeController::class)->name('home');
 
 Route::get('/news', [NewsController::class, 'index'])->name('news.index');
 Route::get('/news/{slug}', [NewsController::class, 'show'])->name('news.show');
+
+Route::get('/membership', [MembershipController::class, 'index'])->name('membership');
+Route::get('/join', [MembershipController::class, 'join'])->name('join');
 
 Route::get('/leadership', [PageController::class, 'leadership'])->name('leadership');
 Route::get('/faq', [PageController::class, 'faq'])->name('faq');
