@@ -24,6 +24,35 @@ return [
             'search_path' => 'public',
             'sslmode' => env('DB_SSLMODE', 'prefer'),
         ],
+
+        /*
+         * A second, independent connection to the same database.
+         *
+         * Exists for one purpose: proving that the membership number counter
+         * is genuinely locked during allocation (FR-3.11, AC-F3). A test using
+         * the default connection cannot observe its own lock — it already
+         * holds it — so the assertion would pass whether or not the lock was
+         * ever taken, which is the failure mode that produces duplicate
+         * membership numbers in production.
+         *
+         * Not used by application code. If it ever is, that is a bug: two
+         * connections mean two transactions, and the activation transaction
+         * in Schema §4.3 has to commit or roll back as one.
+         */
+        'pgsql_second' => [
+            'driver' => 'pgsql',
+            'url' => env('DB_URL'),
+            'host' => env('DB_HOST', '127.0.0.1'),
+            'port' => env('DB_PORT', '5432'),
+            'database' => env('DB_DATABASE', 'aldapcon'),
+            'username' => env('DB_USERNAME', 'aldapcon'),
+            'password' => env('DB_PASSWORD', ''),
+            'charset' => env('DB_CHARSET', 'utf8'),
+            'prefix' => '',
+            'prefix_indexes' => true,
+            'search_path' => 'public',
+            'sslmode' => env('DB_SSLMODE', 'prefer'),
+        ],
     ],
 
     'migrations' => [
